@@ -32,6 +32,9 @@ class NullSonosController:
     def play_spotify_uri(self, uri: str, room_name: str) -> dict:
         return {"ok": True}
 
+    def current_track_info(self, room_name: str) -> dict | None:
+        return None
+
 
 class NullSpotifyClient:
     def current_playback(self) -> dict[str, Any]:
@@ -85,7 +88,14 @@ def create_app(
 
     @app.get("/api/status")
     def api_status():
-        return jsonify({"playback": spotify_client.current_playback()})
+        playback = spotify_client.current_playback()
+        # If Spotify Connect isn't aware of playback (e.g. started via SoCo),
+        # pull track info directly from Sonos.
+        if not playback.get("track"):
+            sonos_info = sonos_controller.current_track_info(sonos_room)
+            if sonos_info:
+                playback = sonos_info
+        return jsonify({"playback": playback})
 
     @app.get("/api/themes")
     def api_themes():

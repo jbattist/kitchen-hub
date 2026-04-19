@@ -84,3 +84,36 @@ class SonosController:
             return {"ok": False, "error": f"Sonos UPnP error: {exc}"}
         except Exception as exc:  # noqa: BLE001
             return {"ok": False, "error": str(exc)}
+
+    def current_track_info(self, room_name: str) -> dict[str, Any] | None:
+        """Return now-playing info from Sonos directly (no Spotify API needed).
+
+        Returns a dict with track info if playing, or None if idle/not found.
+        """
+        zone = self.get_zone(room_name)
+        if zone is None:
+            return None
+        try:
+            info = zone.get_current_track_info()
+            transport = zone.get_current_transport_info()
+            is_playing = transport.get("current_transport_state") == "PLAYING"
+            title = info.get("title") or None
+            artist = info.get("artist") or None
+            album = info.get("album") or None
+            art_uri = info.get("album_art") or None
+            if not title:
+                return None
+            return {
+                "is_playing": is_playing,
+                "device_name": room_name,
+                "track": {
+                    "title": title,
+                    "artist": artist,
+                    "album": album,
+                    "album_art_url": art_uri,
+                    "duration_ms": None,
+                    "progress_ms": None,
+                },
+            }
+        except Exception:  # noqa: BLE001
+            return None

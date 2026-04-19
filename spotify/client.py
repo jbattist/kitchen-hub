@@ -61,22 +61,6 @@ class SpotifyClient:
             for item in items
         ]
 
-    def pause(self) -> dict[str, Any]:
-        self._client.pause_playback()
-        return {"ok": True}
-    def current_user_playlists(self) -> list[dict[str, Any]]:
-        payload = self._client.current_user_playlists(limit=50)
-        items = payload.get("items") or []
-        return [
-            {
-                "id": item.get("id"),
-                "name": item.get("name"),
-                "uri": item.get("uri"),
-                "image_url": ((item.get("images") or [{}])[0]).get("url"),
-            }
-            for item in items
-        ]
-
     def list_devices(self) -> list[dict[str, Any]]:
         devices = self._client.devices().get("devices") or []
         return [
@@ -88,6 +72,22 @@ class SpotifyClient:
             }
             for d in devices
         ]
+
+    def pause(self) -> dict[str, Any]:
+        self._client.pause_playback()
+        return {"ok": True}
+
+    def resume(self) -> dict[str, Any]:
+        self._client.start_playback()
+        return {"ok": True}
+
+    def next_track(self) -> dict[str, Any]:
+        self._client.next_track()
+        return {"ok": True}
+
+    def prev_track(self) -> dict[str, Any]:
+        self._client.previous_track()
+        return {"ok": True}
 
     def start_playlist_playback(self, playlist_uri: str, device_name: str | None = None) -> dict[str, Any]:
         devices = self._client.devices().get("devices") or []
