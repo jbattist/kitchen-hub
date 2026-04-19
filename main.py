@@ -13,7 +13,10 @@ def main() -> None:
     sonos = SonosController()
     app = create_app(
         spotify_client=spotify,
-        art_service=ArtService(),
+        art_service=ArtService(
+            cache_dir=settings.art.cache_dir,
+            default_theme=settings.art.default_theme,
+        ),
         sonos_controller=sonos,
         sonos_room=settings.sonos.default_room,
         idle_timeout_seconds=settings.art.idle_timeout_seconds,
