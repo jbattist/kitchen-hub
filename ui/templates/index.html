@@ -17,11 +17,17 @@
       </header>
 
       <section class="panel now-playing" id="now-playing-panel">
-        <div class="album-art" id="album-art">Album Art</div>
+        <img id="album-art-img" class="album-art-img" src="" alt="Album art" hidden>
+        <div class="album-art" id="album-art-placeholder">♫</div>
         <div class="track-meta">
           <h2 id="track-title">Ready to connect to Spotify</h2>
-          <p id="track-subtitle">Pick a Sonos room, then start playback from the playlist browser.</p>
+          <p id="track-subtitle">Pick a playlist to start playback.</p>
           <p id="playback-device" class="muted">No active device</p>
+        </div>
+        <div class="playback-controls">
+          <button id="prev-button" class="control-button" type="button" title="Previous">⏮</button>
+          <button id="pause-button" class="control-button" type="button" title="Pause / Resume">⏸</button>
+          <button id="next-button" class="control-button" type="button" title="Next">⏭</button>
         </div>
       </section>
 

@@ -68,7 +68,7 @@ Raspberry Pi (SoCo) ─────────[LAN UPnP]───────�
 ### Spotify Web API Auth
 
 OAuth 2.0 with PKCE (no backend needed for initial setup):
-- Scopes needed: `user-read-playback-state`, `user-modify-playback-state`, `user-read-currently-playing`
+- Scopes needed: `user-read-playback-state`, `user-modify-playback-state`, `user-read-currently-playing`, `playlist-read-private`, `playlist-modify-private`, `playlist-modify-public`
 - Token stored locally, auto-refreshed
 - Library: `spotipy` (Python)
 
@@ -109,7 +109,29 @@ sp.seek_track(position_ms=30000)
 
 # Volume (via Spotify)
 sp.volume(volume_percent=60, device_id=sonos_device_id)
+
+# List user playlists (paginated)
+sp.current_user_playlists(limit=50, offset=0)
+
+# Start shuffle playback from a playlist
+sp.shuffle(state=True, device_id=sonos_device_id)
+sp.start_playback(device_id=sonos_device_id, context_uri=playlist_uri)
+
+# Get the current playback queue
+sp.queue()  # Returns { "currently_playing": ..., "queue": [...] }
+
+# Skip to a specific track in the queue (by skipping N times — no direct jump API)
+sp.next_track()  # Repeat as needed; or reorder via queue reorder endpoint
+
+# Add track to queue
+sp.add_to_queue(uri=track_uri, device_id=sonos_device_id)
 ```
+
+**Note:** Spotify Web API has no direct "jump to position N in queue" endpoint. Queue reordering requires using the **playlist** reorder endpoint when the context is a playlist:
+```python
+sp.playlist_reorder_items(playlist_id, range_start, insert_before, range_length=1)
+```
+For queue-only reordering (outside a playlist context), the approach is to skip tracks programmatically.
 
 ---
 
@@ -201,11 +223,39 @@ Themes rotate on a schedule or user can tap to switch.
 
 ## UI Layout
 
+### Playlist Selector Screen (v1)
+
+Entry point when no playback is active (or user taps a "Browse" button from Now Playing). Displays user's Spotify playlists in a scrollable grid/list. Selecting a playlist immediately begins shuffle playback on the active Sonos device.
+
+```
+┌─────────────────────────────────────┐
+│  ♫  Kitchen Hub        [Now Playing]│
+├─────────────────────────────────────┤
+│  Your Playlists                     │
+│                                     │
+│  ┌──────────┐  ┌──────────┐        │
+│  │ [Cover]  │  │ [Cover]  │        │
+│  │ Morning  │  │ Chill    │        │
+│  │ Vibes    │  │ Lounge   │        │
+│  └──────────┘  └──────────┘        │
+│  ┌──────────┐  ┌──────────┐        │
+│  │ [Cover]  │  │ [Cover]  │        │
+│  │ Dinner   │  │ Jazz     │        │
+│  │ Party    │  │ Evening  │        │
+│  └──────────┘  └──────────┘        │
+│                ↕ scroll             │
+└─────────────────────────────────────┘
+```
+
+- Tapping a playlist: enables shuffle → starts playback → switches to Now Playing screen
+- Playlists fetched from `sp.current_user_playlists()`, paginated, cover art shown
+- A "Browse" button on the Now Playing screen navigates here
+
 ### Now Playing Mode
 
 ```
 ┌─────────────────────────────────────┐
-│  ♫  Kitchen Hub                 🔊  │
+│  ♫  Kitchen Hub          [Browse]🔊│
 ├─────────────────────────────────────┤
 │                                     │
 │       [Album Art — large]           │
@@ -245,6 +295,35 @@ Themes rotate on a schedule or user can tap to switch.
 - Smooth crossfade between images (configurable interval, default 30s)
 - Dims display after extended idle (configurable)
 
+### Queue Management Screen (v2)
+
+Accessible via a "Queue" button on the Now Playing screen. Shows the upcoming tracks in the playback queue; user can reorder or remove them.
+
+```
+┌─────────────────────────────────────┐
+│  ← Now Playing       Up Next 🔀     │
+├─────────────────────────────────────┤
+│  Now Playing:                       │
+│  🎵 Song Title — Artist             │
+├─────────────────────────────────────┤
+│  1. [Art] Next Track — Artist    ✕  │
+│      ══════════════════════ [drag]  │
+│  2. [Art] Track Two  — Artist    ✕  │
+│      ══════════════════════ [drag]  │
+│  3. [Art] Track Three— Artist    ✕  │
+│      ══════════════════════ [drag]  │
+│  4. [Art] Track Four — Artist    ✕  │
+│  ...                                │
+│                ↕ scroll             │
+└─────────────────────────────────────┘
+```
+
+- Queue fetched from `sp.queue()`
+- Drag handle (≡) on each row allows reordering; uses `sp.playlist_reorder_items()` when context is a playlist
+- ✕ button removes track from queue (skips past it)
+- Shuffle indicator (🔀) shows current shuffle state; tap to toggle
+- Changes apply immediately via Spotify Web API
+
 ---
 
 ## Features
@@ -260,6 +339,16 @@ Themes rotate on a schedule or user can tap to switch.
 - [ ] At least 3 themes (Impressionism, Abstract, Dutch Masters)
 - [ ] Tap art to return to Now Playing
 - [ ] Background image cache (pre-fetch on startup)
+- [ ] **Playlist Selector screen** — scrollable grid of user's playlists with cover art
+- [ ] Tapping a playlist enables shuffle and starts playback immediately
+- [ ] "Browse" button on Now Playing navigates to Playlist Selector
+
+### v2
+- [ ] **Queue Management screen** — view upcoming tracks in queue
+- [ ] Drag-to-reorder tracks in queue (playlist context via `playlist_reorder_items`)
+- [ ] Remove tracks from queue (✕ button)
+- [ ] Shuffle toggle on queue screen
+- [ ] "Queue" button on Now Playing navigates to Queue screen
 
 ### Nice-to-Have
 - [ ] Theme switcher UI in Art Mode
@@ -285,10 +374,12 @@ kitchen-hub/
 ├── ui/
 │   ├── app.py               # Main app, manages mode switching
 │   ├── now_playing.py       # Spotify Now Playing screen
+│   ├── playlist_selector.py # Playlist browser → shuffle launch (v1)
+│   ├── queue_manager.py     # Queue view + drag-to-reorder (v2)
 │   └── art_mode.py          # Slideshow screen
 ├── spotify/
 │   ├── client.py            # spotipy wrapper, OAuth handling
-│   └── playback.py          # Playback controls, device management
+│   └── playback.py          # Playback controls, device management, playlist/queue ops
 ├── sonos/
 │   └── controller.py        # SoCo wrapper, room discovery/volume
 ├── art/

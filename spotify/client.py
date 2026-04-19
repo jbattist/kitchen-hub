@@ -60,6 +60,22 @@ class SpotifyClient:
             for item in items
         ]
 
+    def pause(self) -> dict[str, Any]:
+        self._client.pause_playback()
+        return {"ok": True}
+
+    def resume(self) -> dict[str, Any]:
+        self._client.start_playback()
+        return {"ok": True}
+
+    def next_track(self) -> dict[str, Any]:
+        self._client.next_track()
+        return {"ok": True}
+
+    def prev_track(self) -> dict[str, Any]:
+        self._client.previous_track()
+        return {"ok": True}
+
     def start_playlist_playback(self, playlist_uri: str, device_name: str | None = None) -> dict[str, Any]:
         if device_name:
             devices = self._client.devices().get("devices") or []

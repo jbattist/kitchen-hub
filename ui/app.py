@@ -21,6 +21,18 @@ class NullSpotifyClient:
     def current_user_playlists(self) -> list[dict[str, Any]]:
         return []
 
+    def pause(self) -> dict[str, Any]:
+        return {"ok": True}
+
+    def resume(self) -> dict[str, Any]:
+        return {"ok": True}
+
+    def next_track(self) -> dict[str, Any]:
+        return {"ok": True}
+
+    def prev_track(self) -> dict[str, Any]:
+        return {"ok": True}
+
     def start_playlist_playback(self, playlist_uri: str, device_name: str | None = None) -> dict[str, bool]:
         return {"ok": bool(playlist_uri), "device_name": device_name}
 
@@ -73,6 +85,22 @@ def create_app(
             device_name=payload.get("device_name"),
         )
         return jsonify({"result": result, "playlist": matching_playlist})
+
+    @app.post("/api/playback/pause")
+    def api_playback_pause():
+        return jsonify(spotify_client.pause())
+
+    @app.post("/api/playback/resume")
+    def api_playback_resume():
+        return jsonify(spotify_client.resume())
+
+    @app.post("/api/playback/next")
+    def api_playback_next():
+        return jsonify(spotify_client.next_track())
+
+    @app.post("/api/playback/prev")
+    def api_playback_prev():
+        return jsonify(spotify_client.prev_track())
 
     @app.get("/api/art/next")
     def api_art_next():
