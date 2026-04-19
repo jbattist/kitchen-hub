@@ -203,6 +203,98 @@ themeButtons.forEach((button) => {
 // Show placeholder on startup until first status poll resolves
 updateAlbumArt(null);
 
+// ── Screensaver ───────────────────────────────────────────────────────────────
+
+const screensaver = document.getElementById('screensaver');
+const screensaverImg = document.getElementById('screensaver-img');
+const screensaverCaption = document.getElementById('screensaver-caption');
+
+let _idleTimeoutMs = 30 * 60 * 1000; // default 30 min, overridden from /api/config
+let _slideshowIntervalMs = 30 * 1000;
+let _idleTimer = null;
+let _slideshowTimer = null;
+let _screensaverActive = false;
+let _currentTheme = null; // last theme tapped, or null → random from config
+
+async function fetchNextArt() {
+  const url = _currentTheme
+    ? `/api/art/next?theme=${encodeURIComponent(_currentTheme)}`
+    : '/api/art/next';
+  try {
+    const payload = await fetchJson(url);
+    return payload.artwork;
+  } catch {
+    return null;
+  }
+}
+
+async function advanceScreensaverArt() {
+  const art = await fetchNextArt();
+  if (!art) return;
+
+  // Crossfade: fade out, swap src, fade in
+  screensaverImg.style.opacity = '0';
+  await new Promise(r => setTimeout(r, 600));
+  screensaverImg.src = art.image_url || '';
+  screensaverCaption.textContent =
+    art.title && art.artist
+      ? `${art.title} — ${art.artist}${art.year ? ` (${art.year})` : ''}`
+      : '';
+  screensaverImg.style.opacity = '1';
+}
+
+function startScreensaver() {
+  if (_screensaverActive) return;
+  _screensaverActive = true;
+  screensaver.classList.add('is-active');
+  screensaver.removeAttribute('aria-hidden');
+  advanceScreensaverArt();
+  _slideshowTimer = setInterval(advanceScreensaverArt, _slideshowIntervalMs);
+}
+
+function stopScreensaver() {
+  if (!_screensaverActive) return;
+  _screensaverActive = false;
+  screensaver.classList.remove('is-active');
+  screensaver.setAttribute('aria-hidden', 'true');
+  clearInterval(_slideshowTimer);
+  _slideshowTimer = null;
+  resetIdleTimer();
+}
+
+function resetIdleTimer() {
+  clearTimeout(_idleTimer);
+  _idleTimer = setTimeout(startScreensaver, _idleTimeoutMs);
+}
+
+// Dismiss screensaver on any interaction
+screensaver.addEventListener('click', stopScreensaver);
+screensaver.addEventListener('touchstart', stopScreensaver, { passive: true });
+
+// Reset idle timer on any user interaction with the main UI
+['click', 'touchstart', 'keydown', 'mousemove'].forEach(evt => {
+  document.addEventListener(evt, () => {
+    if (!_screensaverActive) resetIdleTimer();
+  }, { passive: true });
+});
+
+// Track which theme the user last tapped so screensaver uses same theme
+themeButtons.forEach(button => {
+  button.addEventListener('click', () => {
+    _currentTheme = button.dataset.theme;
+  });
+});
+
+// Load timings from server config then start idle timer
+(async () => {
+  try {
+    const cfg = await fetchJson('/api/config');
+    _idleTimeoutMs = (cfg.idle_timeout_seconds || 1800) * 1000;
+    _slideshowIntervalMs = (cfg.slideshow_interval_seconds || 30) * 1000;
+  } catch { /* use defaults */ }
+  resetIdleTimer();
+})();
+
 // Initial load + poll every 10 seconds
 loadStatus();
 loadDevices();

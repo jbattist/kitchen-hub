@@ -57,6 +57,14 @@
         </div>
       </section>
     </main>
+
+    <!-- Art screensaver overlay -->
+    <div id="screensaver" class="screensaver" aria-hidden="true">
+      <img id="screensaver-img" class="screensaver-img" src="" alt="">
+      <div class="screensaver-caption" id="screensaver-caption"></div>
+      <div class="screensaver-hint">Tap anywhere to return</div>
+    </div>
+
     <script src="{{ url_for('static', filename='app.js') }}"></script>
   </body>
 </html>

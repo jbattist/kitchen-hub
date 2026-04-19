@@ -16,6 +16,8 @@ def main() -> None:
         art_service=ArtService(),
         sonos_controller=sonos,
         sonos_room=settings.sonos.default_room,
+        idle_timeout_seconds=settings.art.idle_timeout_seconds,
+        slideshow_interval_seconds=settings.art.slideshow_interval_seconds,
     )
     app.run(host="0.0.0.0", port=5000, debug=False)
 

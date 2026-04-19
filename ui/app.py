@@ -72,6 +72,8 @@ def create_app(
     available_themes: Sequence[ThemeDefinition] | None = None,
     sonos_controller: Any | None = None,
     sonos_room: str = "Kitchen",
+    idle_timeout_seconds: int = 1800,
+    slideshow_interval_seconds: int = 30,
 ) -> Flask:
     template_folder = str(Path(__file__).with_name("templates"))
     static_folder = str(Path(__file__).with_name("static"))
@@ -81,6 +83,13 @@ def create_app(
     art_service = art_service or ArtService()
     available_themes = tuple(available_themes or DEFAULT_THEMES)
     sonos_controller = sonos_controller or NullSonosController()
+
+    @app.get("/api/config")
+    def api_config():
+        return jsonify({
+            "idle_timeout_seconds": idle_timeout_seconds,
+            "slideshow_interval_seconds": slideshow_interval_seconds,
+        })
 
     @app.get("/")
     def index() -> str:
