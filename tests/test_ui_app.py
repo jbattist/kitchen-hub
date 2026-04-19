@@ -98,3 +98,21 @@ def test_create_app_exposes_status_theme_and_playlist_endpoints() -> None:
             "shuffle": True,
         }
     ]
+
+
+def test_index_renders_interactive_controls() -> None:
+    app = create_app(
+        spotify_client=StubSpotifyClient(),
+        art_service=StubArtService(),
+        available_themes=DEFAULT_THEMES,
+    )
+    client = app.test_client()
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert 'id="browse-button"' in html
+    assert 'id="playlist-panel"' in html
+    assert 'data-theme="Impressionism"' in html
+    assert 'src="/static/app.js"' in html

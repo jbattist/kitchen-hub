@@ -20,10 +20,17 @@ body {
   padding: 1rem;
 }
 
-.topbar {
+.topbar,
+.panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 0.5rem;
 }
 
 button {
@@ -31,6 +38,19 @@ button {
   border-radius: 999px;
   padding: 0.7rem 1rem;
   font-weight: bold;
+  cursor: pointer;
+}
+
+.primary-button {
+  background: #f5f7fb;
+  color: #101726;
+}
+
+.secondary-button,
+.theme-pill,
+.playlist-card {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f5f7fb;
 }
 
 .now-playing {
@@ -47,14 +67,39 @@ button {
   background: rgba(255, 255, 255, 0.12);
 }
 
-.theme-list {
-  display: flex;
-  flex-wrap: wrap;
+.track-meta {
+  display: grid;
   gap: 0.5rem;
 }
 
+.muted {
+  color: rgba(245, 247, 251, 0.72);
+}
+
+.theme-list,
+.playlist-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .theme-pill {
-  background: rgba(255, 255, 255, 0.12);
-  padding: 0.4rem 0.75rem;
-  border-radius: 999px;
+  padding: 0.5rem 0.9rem;
+}
+
+.playlist-card {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 180px;
+  text-align: left;
+  border-radius: 1rem;
+}
+
+.playlist-name {
+  font-size: 1rem;
+}
+
+.playlist-meta {
+  font-size: 0.85rem;
+  color: rgba(245, 247, 251, 0.72);
 }

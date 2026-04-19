@@ -10,25 +10,47 @@
     <main class="app-shell">
       <header class="topbar">
         <h1>♫ Kitchen Hub</h1>
-        <button type="button">Browse</button>
+        <div class="topbar-actions">
+          <button id="browse-button" class="primary-button" type="button">Browse</button>
+          <button id="hide-playlists-button" class="secondary-button" type="button" hidden>Now Playing</button>
+        </div>
       </header>
 
-      <section class="panel now-playing">
-        <div class="album-art">Album Art</div>
+      <section class="panel now-playing" id="now-playing-panel">
+        <div class="album-art" id="album-art">Album Art</div>
         <div class="track-meta">
-          <h2>Ready to connect to Spotify</h2>
-          <p>Pick a Sonos room, then start playback from the playlist browser.</p>
+          <h2 id="track-title">Ready to connect to Spotify</h2>
+          <p id="track-subtitle">Pick a Sonos room, then start playback from the playlist browser.</p>
+          <p id="playback-device" class="muted">No active device</p>
+        </div>
+      </section>
+
+      <section class="panel playlists" id="playlist-panel" hidden>
+        <div class="panel-header">
+          <h2>Your Playlists</h2>
+          <p class="muted">Tap one to start shuffle playback.</p>
+        </div>
+        <div id="playlist-list" class="playlist-list">
+          <p class="muted">Loading playlists…</p>
         </div>
       </section>
 
       <section class="panel themes">
-        <h2>Art Mode Themes</h2>
+        <div class="panel-header">
+          <h2>Art Mode Themes</h2>
+          <p id="artwork-caption" class="muted">Tap a theme to preview art mode content.</p>
+        </div>
         <div class="theme-list">
           {% for theme in themes %}
-          <span class="theme-pill">{{ theme.name }}</span>
+          <button
+            type="button"
+            class="theme-pill"
+            data-theme="{{ theme.name }}"
+          >{{ theme.name }}</button>
           {% endfor %}
         </div>
       </section>
     </main>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
   </body>
 </html>
