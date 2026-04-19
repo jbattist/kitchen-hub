@@ -118,11 +118,23 @@ def create_app(
 
     @app.post("/api/playback/next")
     def api_playback_next():
-        return jsonify(sonos_controller.next_track(sonos_room))
+        result = sonos_controller.next_track(sonos_room)
+        if result.get("restricted"):
+            try:
+                return jsonify(spotify_client.next_track())
+            except SpotifyException as e:
+                return jsonify({"error": str(e)}), 502
+        return jsonify(result)
 
     @app.post("/api/playback/prev")
     def api_playback_prev():
-        return jsonify(sonos_controller.prev_track(sonos_room))
+        result = sonos_controller.prev_track(sonos_room)
+        if result.get("restricted"):
+            try:
+                return jsonify(spotify_client.prev_track())
+            except SpotifyException as e:
+                return jsonify({"error": str(e)}), 502
+        return jsonify(result)
 
     @app.get("/api/art/next")
     def api_art_next():

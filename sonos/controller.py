@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import soco
+from soco.exceptions import SoCoUPnPException
 
 
 class SonosController:
@@ -32,14 +33,20 @@ class SonosController:
         zone = self.get_zone(room_name)
         if zone is None:
             return {"ok": False, "error": f"Zone '{room_name}' not found"}
-        zone.next()
+        try:
+            zone.next()
+        except SoCoUPnPException:
+            return {"ok": False, "restricted": True}
         return {"ok": True}
 
     def prev_track(self, room_name: str) -> dict[str, Any]:
         zone = self.get_zone(room_name)
         if zone is None:
             return {"ok": False, "error": f"Zone '{room_name}' not found"}
-        zone.previous()
+        try:
+            zone.previous()
+        except SoCoUPnPException:
+            return {"ok": False, "restricted": True}
         return {"ok": True}
 
     def set_volume(self, zone: Any, volume: int) -> None:
