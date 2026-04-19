@@ -1,0 +1,7 @@
+Flask>=3.0,<4.0
+PyYAML>=6.0,<7.0
+requests>=2.32,<3.0
+spotipy>=2.24,<3.0
+soco>=0.30,<0.31
+Pillow>=11.0,<12.0
+pytest>=8.0,<9.0
