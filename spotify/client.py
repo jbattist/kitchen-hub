@@ -6,6 +6,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
 from app_config import SpotifySettings
+from ui.app import NoDeviceAvailableError
 
 
 class SpotifyClient:
@@ -63,18 +64,30 @@ class SpotifyClient:
     def pause(self) -> dict[str, Any]:
         self._client.pause_playback()
         return {"ok": True}
+    def current_user_playlists(self) -> list[dict[str, Any]]:
+        payload = self._client.current_user_playlists(limit=50)
+        items = payload.get("items") or []
+        return [
+            {
+                "id": item.get("id"),
+                "name": item.get("name"),
+                "uri": item.get("uri"),
+                "image_url": ((item.get("images") or [{}])[0]).get("url"),
+            }
+            for item in items
+        ]
 
-    def resume(self) -> dict[str, Any]:
-        self._client.start_playback()
-        return {"ok": True}
-
-    def next_track(self) -> dict[str, Any]:
-        self._client.next_track()
-        return {"ok": True}
-
-    def prev_track(self) -> dict[str, Any]:
-        self._client.previous_track()
-        return {"ok": True}
+    def list_devices(self) -> list[dict[str, Any]]:
+        devices = self._client.devices().get("devices") or []
+        return [
+            {
+                "id": d.get("id"),
+                "name": d.get("name"),
+                "type": d.get("type"),
+                "is_active": d.get("is_active", False),
+            }
+            for d in devices
+        ]
 
     def start_playlist_playback(self, playlist_uri: str, device_name: str | None = None) -> dict[str, Any]:
         devices = self._client.devices().get("devices") or []
@@ -89,9 +102,12 @@ class SpotifyClient:
         if device_id is None and devices:
             device_id = devices[0]["id"]
 
-        if device_id:
-            self._client.transfer_playback(device_id=device_id)
+        if device_id is None:
+            raise NoDeviceAvailableError(
+                "No Spotify Connect device is available. Open Spotify on your Sonos or another device first."
+            )
 
+        self._client.transfer_playback(device_id=device_id)
         self._client.start_playback(device_id=device_id, context_uri=playlist_uri)
         self._client.shuffle(state=True, device_id=device_id)
         actual_name = next((d["name"] for d in devices if d["id"] == device_id), device_name)

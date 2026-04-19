@@ -1,10 +1,16 @@
-from ui.app import create_app
+from __future__ import annotations
+
+from ui.app import create_app, NoDeviceAvailableError
 from art.themes import DEFAULT_THEMES
 
 
 class StubSpotifyClient:
-    def __init__(self) -> None:
+    def __init__(self, devices: list[dict] | None = None) -> None:
         self.playback_requests = []
+        self._devices = devices if devices is not None else [
+            {"id": "device-1", "name": "Kitchen", "type": "Speaker"},
+            {"id": "device-2", "name": "Living Room", "type": "Speaker"},
+        ]
 
     def current_playback(self):
         return {
@@ -36,10 +42,27 @@ class StubSpotifyClient:
             },
         ]
 
+    def list_devices(self) -> list[dict]:
+        return self._devices
+
     def start_playlist_playback(self, playlist_uri: str, device_name: str | None = None):
+        if not self._devices:
+            raise NoDeviceAvailableError("No Spotify devices available")
         self.playback_requests.append(
             {"playlist_uri": playlist_uri, "device_name": device_name, "shuffle": True}
         )
+        return {"ok": True}
+
+    def pause(self):
+        return {"ok": True}
+
+    def resume(self):
+        return {"ok": True}
+
+    def next_track(self):
+        return {"ok": True}
+
+    def prev_track(self):
         return {"ok": True}
 
 
@@ -55,6 +78,18 @@ class StubArtService:
             "image_url": "https://images.metmuseum.org/42.jpg",
         }
 
+
+# ── helpers ──────────────────────────────────────────────────────────────────
+
+def _make_client(devices=None):
+    return create_app(
+        spotify_client=StubSpotifyClient(devices=devices),
+        art_service=StubArtService(),
+        available_themes=DEFAULT_THEMES,
+    ).test_client()
+
+
+# ── existing tests ────────────────────────────────────────────────────────────
 
 def test_create_app_exposes_status_theme_and_playlist_endpoints() -> None:
     spotify_client = StubSpotifyClient()
@@ -116,3 +151,39 @@ def test_index_renders_interactive_controls() -> None:
     assert 'id="playlist-panel"' in html
     assert 'data-theme="Impressionism"' in html
     assert 'src="/static/app.js"' in html
+
+
+# ── new: device listing ───────────────────────────────────────────────────────
+
+def test_api_devices_returns_available_spotify_devices() -> None:
+    client = _make_client(devices=[
+        {"id": "device-1", "name": "Kitchen", "type": "Speaker"},
+        {"id": "device-2", "name": "Living Room", "type": "Speaker"},
+    ])
+    response = client.get("/api/devices")
+    assert response.status_code == 200
+    payload = response.get_json()
+    names = [d["name"] for d in payload["devices"]]
+    assert "Kitchen" in names
+    assert "Living Room" in names
+
+
+def test_api_devices_returns_empty_list_when_none_available() -> None:
+    client = _make_client(devices=[])
+    response = client.get("/api/devices")
+    assert response.status_code == 200
+    assert response.get_json()["devices"] == []
+
+
+# ── new: no-device error handling ─────────────────────────────────────────────
+
+def test_playlist_play_returns_409_when_no_devices_available() -> None:
+    client = _make_client(devices=[])
+    response = client.post(
+        "/api/playlists/playlist-1/play",
+        json={"device_name": "Kitchen"},
+    )
+    assert response.status_code == 409
+    payload = response.get_json()
+    assert "no_device" in payload["code"]
+    assert "device" in payload["error"].lower()

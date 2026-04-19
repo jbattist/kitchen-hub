@@ -18,9 +18,26 @@ let isPlaying = false;
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, options);
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
+    const err = new Error(`Request failed: ${response.status}`);
+    err.status = response.status;
+    try { const body = await response.json(); err.message = body.error || err.message; } catch {}
+    throw err;
   }
   return response.json();
+}
+
+let _devices = [];
+
+function activeDeviceName() {
+  const active = _devices.find(d => d.is_active);
+  return active ? active.name : (_devices[0] ? _devices[0].name : null);
+}
+
+async function loadDevices() {
+  try {
+    const payload = await fetchJson('/api/devices');
+    _devices = payload.devices || [];
+  } catch { _devices = []; }
 }
 
 function showPlaylists() {
@@ -63,23 +80,28 @@ function renderPlaylists(playlists) {
       <span class="playlist-meta">Tap to shuffle on Kitchen</span>
     `;
     button.addEventListener('click', async () => {
+      button.disabled = true;
       trackTitle.textContent = `Starting ${playlist.name}…`;
       try {
         await fetchJson(`/api/playlists/${playlist.id}/play`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
+          body: JSON.stringify({ device_name: activeDeviceName() }),
         });
         trackTitle.textContent = playlist.name;
         trackSubtitle.textContent = 'Shuffle playback requested';
-        playbackDevice.textContent = 'Playing on Kitchen';
+        playbackDevice.textContent = activeDeviceName() ? `Playing on ${activeDeviceName()}` : 'Playback started';
         hidePlaylists();
-        isPlaying = true;
-        pauseButton.textContent = '⏸';
-        pauseButton.title = 'Pause';
       } catch (error) {
-        trackTitle.textContent = 'Could not start playlist';
-        trackSubtitle.textContent = error.message;
+        if (error.status === 409) {
+          trackTitle.textContent = 'No Spotify device found';
+          trackSubtitle.textContent = 'Open Spotify on your Sonos or another device, then try again.';
+        } else {
+          trackTitle.textContent = 'Could not start playlist';
+          trackSubtitle.textContent = error.message;
+        }
+      } finally {
+        button.disabled = false;
       }
     });
     playlistList.appendChild(button);
@@ -129,7 +151,7 @@ async function previewTheme(themeName) {
 
 browseButton?.addEventListener('click', async () => {
   showPlaylists();
-  await loadPlaylists();
+  await Promise.all([loadPlaylists(), loadDevices()]);
 });
 
 hidePlaylistsButton?.addEventListener('click', () => {
@@ -180,4 +202,5 @@ themeButtons.forEach((button) => {
 
 // Initial load + poll every 10 seconds
 loadStatus();
+loadDevices();
 setInterval(loadStatus, 10_000);

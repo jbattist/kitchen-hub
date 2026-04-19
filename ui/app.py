@@ -12,6 +12,10 @@ from art.themes import DEFAULT_THEMES, ThemeDefinition
 from sonos.controller import SonosController
 
 
+class NoDeviceAvailableError(Exception):
+    """Raised when no Spotify Connect device is active or available."""
+
+
 class NullSonosController:
     def pause(self, room_name: str) -> dict:
         return {"ok": True}
@@ -35,6 +39,9 @@ class NullSpotifyClient:
         }
 
     def current_user_playlists(self) -> list[dict[str, Any]]:
+        return []
+
+    def list_devices(self) -> list[dict[str, Any]]:
         return []
 
     def pause(self) -> dict[str, Any]:
@@ -81,6 +88,10 @@ def create_app(
     def api_themes():
         return jsonify({"themes": [theme.to_dict() for theme in available_themes]})
 
+    @app.get("/api/devices")
+    def api_devices():
+        return jsonify({"devices": spotify_client.list_devices()})
+
     @app.get("/api/playlists")
     def api_playlists():
         return jsonify({"playlists": spotify_client.current_user_playlists()})
@@ -104,6 +115,8 @@ def create_app(
                 playlist_uri=matching_playlist["uri"],
                 device_name=payload.get("device_name"),
             )
+        except NoDeviceAvailableError as e:
+            return jsonify({"error": str(e), "code": "no_device"}), 409
         except SpotifyException as e:
             return jsonify({"error": str(e)}), 502
         return jsonify({"result": result, "playlist": matching_playlist})
