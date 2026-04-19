@@ -15,6 +15,18 @@ This repository now contains the first implementation scaffold:
 
 ## Quick start
 
+### Fish shell
+
+```fish
+python -m venv .venv
+source .venv/bin/activate.fish
+python -m ensurepip --upgrade
+python -m pip install -r requirements.txt
+python main.py
+```
+
+### POSIX shells (`bash`, `zsh`, `sh`)
+
 ```bash
 python -m venv .venv
 . .venv/bin/activate
@@ -26,6 +38,15 @@ python main.py
 Then open <http://localhost:5000>.
 
 ## Run tests
+
+### Fish shell
+
+```fish
+source .venv/bin/activate.fish
+python -m pytest tests/ -q
+```
+
+### POSIX shells (`bash`, `zsh`, `sh`)
 
 ```bash
 . .venv/bin/activate
