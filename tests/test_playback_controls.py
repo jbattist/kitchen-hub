@@ -73,51 +73,75 @@ class StubArtService:
         }
 
 
+class StubSonosController:
+    def __init__(self) -> None:
+        self.actions: list[str] = []
+
+    def pause(self, room_name: str) -> dict:
+        self.actions.append("pause")
+        return {"ok": True}
+
+    def resume(self, room_name: str) -> dict:
+        self.actions.append("resume")
+        return {"ok": True}
+
+    def next_track(self, room_name: str) -> dict:
+        self.actions.append("next")
+        return {"ok": True}
+
+    def prev_track(self, room_name: str) -> dict:
+        self.actions.append("prev")
+        return {"ok": True}
+
+
 @pytest.fixture
 def client_and_spotify():
     spotify = StubSpotifyClient()
+    sonos = StubSonosController()
     app = create_app(
         spotify_client=spotify,
         art_service=StubArtService(),
         available_themes=DEFAULT_THEMES,
+        sonos_controller=sonos,
+        sonos_room="Kitchen",
     )
-    return app.test_client(), spotify
+    return app.test_client(), spotify, sonos
 
 
 def test_pause_endpoint(client_and_spotify):
-    client, spotify = client_and_spotify
+    client, spotify, sonos = client_and_spotify
     response = client.post("/api/playback/pause")
     assert response.status_code == 200
     assert response.get_json() == {"ok": True}
-    assert "pause" in spotify.actions
+    assert "pause" in sonos.actions
 
 
 def test_resume_endpoint(client_and_spotify):
-    client, spotify = client_and_spotify
+    client, spotify, sonos = client_and_spotify
     response = client.post("/api/playback/resume")
     assert response.status_code == 200
     assert response.get_json() == {"ok": True}
-    assert "resume" in spotify.actions
+    assert "resume" in sonos.actions
 
 
 def test_next_track_endpoint(client_and_spotify):
-    client, spotify = client_and_spotify
+    client, spotify, sonos = client_and_spotify
     response = client.post("/api/playback/next")
     assert response.status_code == 200
     assert response.get_json() == {"ok": True}
-    assert "next" in spotify.actions
+    assert "next" in sonos.actions
 
 
 def test_prev_track_endpoint(client_and_spotify):
-    client, spotify = client_and_spotify
+    client, spotify, sonos = client_and_spotify
     response = client.post("/api/playback/prev")
     assert response.status_code == 200
     assert response.get_json() == {"ok": True}
-    assert "prev" in spotify.actions
+    assert "prev" in sonos.actions
 
 
 def test_status_includes_album_art_url(client_and_spotify):
-    client, _ = client_and_spotify
+    client, _, __ = client_and_spotify
     response = client.get("/api/status")
     assert response.status_code == 200
     payload = response.get_json()
@@ -125,7 +149,7 @@ def test_status_includes_album_art_url(client_and_spotify):
 
 
 def test_index_renders_playback_controls(client_and_spotify):
-    client, _ = client_and_spotify
+    client, _, __ = client_and_spotify
     response = client.get("/")
     html = response.get_data(as_text=True)
     assert 'id="pause-button"' in html

@@ -9,6 +9,21 @@ from spotipy.exceptions import SpotifyException
 
 from art.fetcher import ArtService
 from art.themes import DEFAULT_THEMES, ThemeDefinition
+from sonos.controller import SonosController
+
+
+class NullSonosController:
+    def pause(self, room_name: str) -> dict:
+        return {"ok": True}
+
+    def resume(self, room_name: str) -> dict:
+        return {"ok": True}
+
+    def next_track(self, room_name: str) -> dict:
+        return {"ok": True}
+
+    def prev_track(self, room_name: str) -> dict:
+        return {"ok": True}
 
 
 class NullSpotifyClient:
@@ -42,6 +57,8 @@ def create_app(
     spotify_client: Any | None = None,
     art_service: ArtService | None = None,
     available_themes: Sequence[ThemeDefinition] | None = None,
+    sonos_controller: Any | None = None,
+    sonos_room: str = "Kitchen",
 ) -> Flask:
     template_folder = str(Path(__file__).with_name("templates"))
     static_folder = str(Path(__file__).with_name("static"))
@@ -50,6 +67,7 @@ def create_app(
     spotify_client = spotify_client or NullSpotifyClient()
     art_service = art_service or ArtService()
     available_themes = tuple(available_themes or DEFAULT_THEMES)
+    sonos_controller = sonos_controller or NullSonosController()
 
     @app.get("/")
     def index() -> str:
@@ -92,31 +110,19 @@ def create_app(
 
     @app.post("/api/playback/pause")
     def api_playback_pause():
-        try:
-            return jsonify(spotify_client.pause())
-        except SpotifyException as e:
-            return jsonify({"error": str(e)}), 502
+        return jsonify(sonos_controller.pause(sonos_room))
 
     @app.post("/api/playback/resume")
     def api_playback_resume():
-        try:
-            return jsonify(spotify_client.resume())
-        except SpotifyException as e:
-            return jsonify({"error": str(e)}), 502
+        return jsonify(sonos_controller.resume(sonos_room))
 
     @app.post("/api/playback/next")
     def api_playback_next():
-        try:
-            return jsonify(spotify_client.next_track())
-        except SpotifyException as e:
-            return jsonify({"error": str(e)}), 502
+        return jsonify(sonos_controller.next_track(sonos_room))
 
     @app.post("/api/playback/prev")
     def api_playback_prev():
-        try:
-            return jsonify(spotify_client.prev_track())
-        except SpotifyException as e:
-            return jsonify({"error": str(e)}), 502
+        return jsonify(sonos_controller.prev_track(sonos_room))
 
     @app.get("/api/art/next")
     def api_art_next():
