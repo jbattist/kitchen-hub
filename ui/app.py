@@ -29,6 +29,9 @@ class NullSonosController:
     def prev_track(self, room_name: str) -> dict:
         return {"ok": True}
 
+    def play_spotify_uri(self, uri: str, room_name: str) -> dict:
+        return {"ok": True}
+
 
 class NullSpotifyClient:
     def current_playback(self) -> dict[str, Any]:
@@ -110,6 +113,15 @@ def create_app(
         if matching_playlist is None:
             return jsonify({"error": "Playlist not found"}), 404
 
+        # Try SoCo (direct Sonos) first — no active Spotify Connect session needed.
+        sonos_result = sonos_controller.play_spotify_uri(
+            uri=matching_playlist["uri"],
+            room_name=sonos_room,
+        )
+        if sonos_result.get("ok"):
+            return jsonify({"result": sonos_result, "playlist": matching_playlist, "method": "sonos"})
+
+        # Fall back to Spotify Connect (requires an active device).
         try:
             result = spotify_client.start_playlist_playback(
                 playlist_uri=matching_playlist["uri"],
@@ -119,7 +131,7 @@ def create_app(
             return jsonify({"error": str(e), "code": "no_device"}), 409
         except SpotifyException as e:
             return jsonify({"error": str(e)}), 502
-        return jsonify({"result": result, "playlist": matching_playlist})
+        return jsonify({"result": result, "playlist": matching_playlist, "method": "spotify_connect"})
 
     @app.post("/api/playback/pause")
     def api_playback_pause():

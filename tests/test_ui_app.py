@@ -81,11 +81,38 @@ class StubArtService:
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
-def _make_client(devices=None):
+class StubSonosController:
+    def __init__(self, soco_ok: bool = True) -> None:
+        self.soco_ok = soco_ok
+        self.play_calls: list[dict] = []
+
+    def pause(self, room_name: str) -> dict:
+        return {"ok": True}
+
+    def resume(self, room_name: str) -> dict:
+        return {"ok": True}
+
+    def next_track(self, room_name: str) -> dict:
+        return {"ok": True}
+
+    def prev_track(self, room_name: str) -> dict:
+        return {"ok": True}
+
+    def play_spotify_uri(self, uri: str, room_name: str) -> dict:
+        self.play_calls.append({"uri": uri, "room_name": room_name})
+        if self.soco_ok:
+            return {"ok": True}
+        return {"ok": False, "error": "Zone not found"}
+
+
+def _make_client(devices=None, soco_ok: bool = False):
+    """Create a test client. SoCo disabled by default so Spotify Connect path is testable."""
+    sonos = StubSonosController(soco_ok=soco_ok)
     return create_app(
         spotify_client=StubSpotifyClient(devices=devices),
         art_service=StubArtService(),
         available_themes=DEFAULT_THEMES,
+        sonos_controller=sonos,
     ).test_client()
 
 
@@ -97,6 +124,7 @@ def test_create_app_exposes_status_theme_and_playlist_endpoints() -> None:
         spotify_client=spotify_client,
         art_service=StubArtService(),
         available_themes=DEFAULT_THEMES,
+        sonos_controller=StubSonosController(soco_ok=False),  # force Spotify Connect path
     )
     client = app.test_client()
 
@@ -187,3 +215,51 @@ def test_playlist_play_returns_409_when_no_devices_available() -> None:
     payload = response.get_json()
     assert "no_device" in payload["code"]
     assert "device" in payload["error"].lower()
+
+
+# ── SoCo-first playback ───────────────────────────────────────────────────────
+
+def _make_client_with_sonos(soco_ok: bool = True, devices=None):
+    sonos = StubSonosController(soco_ok=soco_ok)
+    spotify = StubSpotifyClient(devices=devices or [])
+    app = create_app(
+        spotify_client=spotify,
+        art_service=StubArtService(),
+        available_themes=DEFAULT_THEMES,
+        sonos_controller=sonos,
+        sonos_room="Kitchen",
+    )
+    return app.test_client(), sonos, spotify
+
+
+def test_playlist_play_uses_sonos_soco_when_available() -> None:
+    client, sonos, spotify = _make_client_with_sonos(soco_ok=True)
+    response = client.post("/api/playlists/playlist-1/play")
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["method"] == "sonos"
+    assert sonos.play_calls[0]["uri"] == "spotify:playlist:playlist-1"
+    assert sonos.play_calls[0]["room_name"] == "Kitchen"
+    # Spotify Connect should NOT have been called
+    assert spotify.playback_requests == []
+
+
+def test_playlist_play_falls_back_to_spotify_connect_when_sonos_fails() -> None:
+    """When SoCo can't reach the zone, fall back to Spotify Connect."""
+    client, sonos, spotify = _make_client_with_sonos(
+        soco_ok=False,
+        devices=[{"id": "d1", "name": "Kitchen", "type": "Speaker"}],
+    )
+    response = client.post("/api/playlists/playlist-1/play")
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["method"] == "spotify_connect"
+    assert len(spotify.playback_requests) == 1
+
+
+def test_playlist_play_returns_409_when_both_sonos_and_spotify_unavailable() -> None:
+    """SoCo fails AND no Spotify devices → 409."""
+    client, sonos, spotify = _make_client_with_sonos(soco_ok=False, devices=[])
+    response = client.post("/api/playlists/playlist-1/play")
+    assert response.status_code == 409
+    assert response.get_json()["code"] == "no_device"
