@@ -68,7 +68,7 @@ function renderPlaylists(playlists) {
         await fetchJson(`/api/playlists/${playlist.id}/play`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ device_name: 'Kitchen' }),
+          body: JSON.stringify({}),
         });
         trackTitle.textContent = playlist.name;
         trackSubtitle.textContent = 'Shuffle playback requested';
