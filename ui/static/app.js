@@ -200,6 +200,9 @@ themeButtons.forEach((button) => {
   });
 });
 
+// Show placeholder on startup until first status poll resolves
+updateAlbumArt(null);
+
 // Initial load + poll every 10 seconds
 loadStatus();
 loadDevices();
