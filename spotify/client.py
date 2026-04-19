@@ -77,15 +77,14 @@ class SpotifyClient:
         return {"ok": True}
 
     def start_playlist_playback(self, playlist_uri: str, device_name: str | None = None) -> dict[str, Any]:
+        device_id = None
         if device_name:
             devices = self._client.devices().get("devices") or []
-            matching = next((device for device in devices if device.get("name") == device_name), None)
+            matching = next((d for d in devices if d.get("name") == device_name), None)
             if matching:
-                self._client.transfer_playback(device_id=matching["id"])
-                self._client.shuffle(state=True, device_id=matching["id"])
-                self._client.start_playback(device_id=matching["id"], context_uri=playlist_uri)
-                return {"ok": True, "device_name": device_name}
+                device_id = matching["id"]
+                self._client.transfer_playback(device_id=device_id)
 
-        self._client.shuffle(state=True)
-        self._client.start_playback(context_uri=playlist_uri)
+        self._client.start_playback(device_id=device_id, context_uri=playlist_uri)
+        self._client.shuffle(state=True, device_id=device_id)
         return {"ok": True, "device_name": device_name}

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from flask import Flask, jsonify, render_template, request
+from spotipy.exceptions import SpotifyException
 
 from art.fetcher import ArtService
 from art.themes import DEFAULT_THEMES, ThemeDefinition
@@ -80,27 +81,42 @@ def create_app(
         if matching_playlist is None:
             return jsonify({"error": "Playlist not found"}), 404
 
-        result = spotify_client.start_playlist_playback(
-            playlist_uri=matching_playlist["uri"],
-            device_name=payload.get("device_name"),
-        )
+        try:
+            result = spotify_client.start_playlist_playback(
+                playlist_uri=matching_playlist["uri"],
+                device_name=payload.get("device_name"),
+            )
+        except SpotifyException as e:
+            return jsonify({"error": str(e)}), 502
         return jsonify({"result": result, "playlist": matching_playlist})
 
     @app.post("/api/playback/pause")
     def api_playback_pause():
-        return jsonify(spotify_client.pause())
+        try:
+            return jsonify(spotify_client.pause())
+        except SpotifyException as e:
+            return jsonify({"error": str(e)}), 502
 
     @app.post("/api/playback/resume")
     def api_playback_resume():
-        return jsonify(spotify_client.resume())
+        try:
+            return jsonify(spotify_client.resume())
+        except SpotifyException as e:
+            return jsonify({"error": str(e)}), 502
 
     @app.post("/api/playback/next")
     def api_playback_next():
-        return jsonify(spotify_client.next_track())
+        try:
+            return jsonify(spotify_client.next_track())
+        except SpotifyException as e:
+            return jsonify({"error": str(e)}), 502
 
     @app.post("/api/playback/prev")
     def api_playback_prev():
-        return jsonify(spotify_client.prev_track())
+        try:
+            return jsonify(spotify_client.prev_track())
+        except SpotifyException as e:
+            return jsonify({"error": str(e)}), 502
 
     @app.get("/api/art/next")
     def api_art_next():
